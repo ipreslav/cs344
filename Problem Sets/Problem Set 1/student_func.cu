@@ -15,7 +15,7 @@
 
 //To convert an image from color to grayscale one simple method is to
 //set the intensity to the average of the RGB channels.  But we will
-//use a more sophisticated method that takes into account how the eye 
+//use a more sophisticated method that takes into account how the eye
 //perceives color and weights the channels unequally.
 
 //The eye responds most strongly to green followed by red and then blue.
@@ -24,7 +24,7 @@
 
 //I = .299f * R + .587f * G + .114f * B
 
-//Notice the trailing f's on the numbers which indicate that they are 
+//Notice the trailing f's on the numbers which indicate that they are
 //single precision floating point constants and not double precision
 //constants.
 
@@ -50,6 +50,13 @@ void rgba_to_greyscale(const uchar4* const rgbaImage,
   //First create a mapping from the 2D block and grid locations
   //to an absolute 2D location in the image, then use that to
   //calculate a 1D offset
+  for (int i = 0; i < numRows; i++){
+    for (int j = 0; j < numCols; j++){
+      greyImage[i * numCols + j] = 0.299f * rgbaImage[i * numCols + j].x +
+                                   0.587f * rgbaImage[i * numCols + j].y +
+                                   0.114f * rgbaImage[i * numCols + j].z;
+    }
+  }
 }
 
 void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_rgbaImage,
@@ -60,7 +67,7 @@ void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_r
   const dim3 blockSize(1, 1, 1);  //TODO
   const dim3 gridSize( 1, 1, 1);  //TODO
   rgba_to_greyscale<<<gridSize, blockSize>>>(d_rgbaImage, d_greyImage, numRows, numCols);
-  
+
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
 
 }
