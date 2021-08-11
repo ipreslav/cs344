@@ -109,7 +109,7 @@ void gaussian_blur(const unsigned char* const inputChannel,
                    const float* const filter, const int filterWidth)
 {
   // TODO
-  
+
   // NOTE: Be sure to compute any intermediate results in floating point
   // before storing the final result as unsigned char.
 
@@ -122,7 +122,7 @@ void gaussian_blur(const unsigned char* const inputChannel,
   // {
   //     return;
   // }
-  
+
   // NOTE: If a thread's absolute position 2D position is within the image, but some of
   // its neighbors are outside the image, then you will need to be extra careful. Instead
   // of trying to read such a neighbor value from GPU memory (which won't work because
@@ -152,6 +152,17 @@ void separateChannels(const uchar4* const inputImageRGBA,
   // {
   //     return;
   // }
+  int index;
+  for (int i = 0; i < numRows; i++) {
+    for (int j = 0; j < numCols; j++) {
+      index = i * numCols + j;
+      redChannel[index] = inputImageRGBA[index].x;
+      greenChannel[index] = inputImageRGBA[index].y;
+      blueChannel[index] = inputImageRGBA[index].z;
+    }
+  }
+  printf("Done separating AoS image to SoA each %d wide\n", numRows * numCols);
+
 }
 
 //This kernel takes in three color channels and recombines them
@@ -215,8 +226,8 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
 
 void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_inputImageRGBA,
                         uchar4* const d_outputImageRGBA, const size_t numRows, const size_t numCols,
-                        unsigned char *d_redBlurred, 
-                        unsigned char *d_greenBlurred, 
+                        unsigned char *d_redBlurred,
+                        unsigned char *d_greenBlurred,
                         unsigned char *d_blueBlurred,
                         const int filterWidth)
 {
