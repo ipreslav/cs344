@@ -112,7 +112,7 @@ void separateChannels(const uchar4* const inputImageRGBA,
                       unsigned char* const greenChannel,
                       unsigned char* const blueChannel)
 {
-  // TODO
+  // DONE
   //
   // NOTE: Be careful not to try to access memory that is outside the bounds of
   // the image. You'll want code that performs the following check before accessing
@@ -123,17 +123,11 @@ void separateChannels(const uchar4* const inputImageRGBA,
   // {
   //     return;
   // }
-  int index;
-  for (int i = 0; i < numRows; i++) {
-    for (int j = 0; j < numCols; j++) {
-      index = i * numCols + j;
-      redChannel[index] = inputImageRGBA[index].x;
-      greenChannel[index] = inputImageRGBA[index].y;
-      blueChannel[index] = inputImageRGBA[index].z;
-    }
+  for (int i = 0; i < numRows * numCols; i++) {
+    redChannel[i] = inputImageRGBA[i].x;
+    greenChannel[i] = inputImageRGBA[i].y;
+    blueChannel[i] = inputImageRGBA[i].z;
   }
-  printf("Done separating AoS image to SoA each %d wide\n", numRows * numCols);
-
 }
 
 __global__
@@ -224,6 +218,10 @@ void allocateMemoryAndCopyToGPU(const size_t numRowsImage, const size_t numColsI
 
 }
 
+unsigned char* d_redChannel;
+unsigned char* d_greenChannel;
+unsigned char* d_blueChannel;
+
 void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_inputImageRGBA,
                         uchar4* const d_outputImageRGBA, const size_t numRows, const size_t numCols,
                         unsigned char *d_redBlurred,
@@ -231,6 +229,11 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
                         unsigned char *d_blueBlurred,
                         const int filterWidth)
 {
+  const int SIZE = numRows * numCols * sizeof(unsigned char);
+  unsigned char h_redChannel[numRows * numCols];
+  unsigned char h_greenChannel[numRows * numCols];
+  unsigned char h_blueChannel[numRows * numCols];
+
   //TODO: Set reasonable block size (i.e., number of threads per block)
   const dim3 blockSize;
 
@@ -239,7 +242,31 @@ void your_gaussian_blur(const uchar4 * const h_inputImageRGBA, uchar4 * const d_
   //from the image size and and block size.
   const dim3 gridSize;
 
-  //TODO: Launch a kernel for separating the RGBA image into different color channels
+  //DONE: Launch a kernel for separating the RGBA image into different color channels
+  checkCudaErrors(cudaMalloc((void **)&d_inputImageRGBA, numRows * numCols * sizeof(uchar4)));
+  checkCudaErrors(cudaMalloc((void **)&d_redChannel, SIZE));
+  checkCudaErrors(cudaMalloc((void **)&d_greenChannel, SIZE));
+  checkCudaErrors(cudaMalloc((void **)&d_blueChannel, SIZE));
+
+  checkCudaErrors(cudaMemcpy((void *)d_inputImageRGBA, (void *)h_inputImageRGBA, numRows * numCols * sizeof(uchar4), cudaMemcpyHostToDevice));
+
+  separateChannels<<<1, 1>>>(d_inputImageRGBA, numCols, numRows, d_redChannel, d_greenChannel, d_blueChannel);
+
+  checkCudaErrors(cudaMemcpy((void *)h_redChannel,(void *)d_redChannel, SIZE, cudaMemcpyDeviceToHost));
+  checkCudaErrors(cudaMemcpy((void *)h_greenChannel,(void *)d_greenChannel, SIZE, cudaMemcpyDeviceToHost));
+  checkCudaErrors(cudaMemcpy((void *)h_blueChannel, (void *)d_blueChannel, SIZE, cudaMemcpyDeviceToHost));
+
+  // Check if splitting into channels was correct
+#ifdef TEST_SPLIT
+  for (int i = 0; i < numRows * numCols; i++) {
+    if (h_inputImageRGBA[i].x != h_redChannel[i])
+      printf("Error h_inputImageRGBA[%d].x != h_redChannel[%d]!\n", i, i);
+    if (h_inputImageRGBA[i].y != h_greenChannel[i])
+      printf("Error h_inputImageRGBA[%d].y != h_greenChannel[%d]!\n", i, i);
+    if (h_inputImageRGBA[i].z != h_blueChannel[i])
+      printf("Error h_inputImageRGBA[%d].z != h_blueChannel[%d]!\n", i, i);
+  }
+#endif
 
   // Call cudaDeviceSynchronize(), then call checkCudaErrors() immediately after
   // launching your kernel to make sure that you didn't make any mistakes.
@@ -272,4 +299,8 @@ void cleanup() {
   checkCudaErrors(cudaFree(d_red));
   checkCudaErrors(cudaFree(d_green));
   checkCudaErrors(cudaFree(d_blue));
+
+  checkCudaErrors(cudaFree(d_redChannel));
+  checkCudaErrors(cudaFree(d_greenChannel));
+  checkCudaErrors(cudaFree(d_blueChannel));
 }
