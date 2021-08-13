@@ -1,4 +1,5 @@
 // Homework 1
+// Solved
 // Color to Greyscale Conversion
 
 //A common way to represent color images is known as RGBA - the color
@@ -50,12 +51,14 @@ void rgba_to_greyscale(const uchar4* const rgbaImage,
   //First create a mapping from the 2D block and grid locations
   //to an absolute 2D location in the image, then use that to
   //calculate a 1D offset
-  for (int i = 0; i < numRows; i++){
-    for (int j = 0; j < numCols; j++){
-      greyImage[i * numCols + j] = 0.299f * rgbaImage[i * numCols + j].x +
-                                   0.587f * rgbaImage[i * numCols + j].y +
-                                   0.114f * rgbaImage[i * numCols + j].z;
-    }
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  float avg_float;
+  if (i < numRows * numCols){
+    avg_float = 0.299f * (float)rgbaImage[i].x +
+                0.587f * (float)rgbaImage[i].y +
+                0.114f * (float)rgbaImage[i].z;
+
+    greyImage[i] = avg_float;
   }
 }
 
@@ -64,10 +67,16 @@ void your_rgba_to_greyscale(const uchar4 * const h_rgbaImage, uchar4 * const d_r
 {
   //You must fill in the correct sizes for the blockSize and gridSize
   //currently only one block with one thread is being launched
-  const dim3 blockSize(1, 1, 1);  //TODO
-  const dim3 gridSize( 1, 1, 1);  //TODO
+  const int THREADS_PER_BLOCK = 128;
+  const int TOTAL_THREADS = numRows * numCols;
+  const int NUM_BLOCKS = (int)(TOTAL_THREADS / THREADS_PER_BLOCK) + 1;
+
+  const dim3 gridSize(NUM_BLOCKS, 1, 1);  //TODO
+  const dim3 blockSize(THREADS_PER_BLOCK, 1, 1);  //TODO
+
+  //printf("Total threads = %d -> %d blocks with %d threads each \n", TOTAL_THREADS, NUM_BLOCKS, THREADS_PER_BLOCK);
   rgba_to_greyscale<<<gridSize, blockSize>>>(d_rgbaImage, d_greyImage, numRows, numCols);
 
   cudaDeviceSynchronize(); checkCudaErrors(cudaGetLastError());
-
 }
+
